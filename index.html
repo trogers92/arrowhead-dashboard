@@ -188,6 +188,7 @@ function render(s){
   c.appendChild(cryptoCard(s.crypto || {}));
   c.appendChild(optionsCard(s.options || {}));
   c.appendChild(healthCard(s.health || {}, h));
+  c.appendChild(learningCard(s.learning || {}));
 }
 
 function card(title, pill){
@@ -359,6 +360,46 @@ function healthCard(hlth, h){
   html += `<div class="k">Desktop required</div><div class="v"><span class="pos">NO</span></div>`;
   html += '</div>';
   b.innerHTML = html;
+  sec.appendChild(b);
+  return sec;
+}
+
+function learningCard(lr){
+  const sec = card("Learning / missed opportunities");
+  const b = bodyDiv();
+  b.appendChild(el("div","note", "HYPOTHETICAL ≠ REAL P&L — modelled outcomes on bars AFTER each decision. "
+    + "Production rules never self-modify."));
+  if(!lr.available){
+    b.appendChild(el("div","empty", esc(lr.note || "No learning report yet — runs after the equity session.")));
+    sec.appendChild(b); return sec;
+  }
+  const t = lr.today || {}, s7 = lr.seven_day || {};
+  let html = '<div class="big">'
+    + `<div class="cell"><div class="lbl">Evaluated today</div><div class="num">${num(t.evaluated_opportunities,0)}</div></div>`
+    + `<div class="cell"><div class="lbl">Hypothetical R left on table</div><div class="num ${pnlClass(t.hypothetical_r_left_on_table)}">${num(t.hypothetical_r_left_on_table,2)}R</div></div>`
+    + '</div>';
+  html += '<div class="kv">'
+    + `<div class="k">Actual trades</div><div class="v">${num(t.actual_trades,0)}</div>`
+    + `<div class="k">Rejected / blocked</div><div class="v">${num(t.rejected_or_blocked,0)}</div>`
+    + `<div class="k">Good rejections</div><div class="v"><span class="pos">${num(t.good_rejections,0)}</span></div>`
+    + `<div class="k">Bad rejections</div><div class="v"><span class="neg">${num(t.bad_rejections,0)}</span></div>`
+    + `<div class="k">Missed SHORT opportunities</div><div class="v"><span class="neg">${num(t.missed_short_opportunities,0)}</span> <span class="dim">(shorting disabled)</span></div>`
+    + `<div class="k">Losses avoided by filters</div><div class="v">${num(t.losses_avoided_hypothetical_r,2)}R <span class="dim">hypothetical</span></div>`
+    + `<div class="k">Outcomes still pending</div><div class="v dim">${num(t.pending_outcomes,0)}</div>`
+    + `<div class="k">7-day bearish (blocked) R</div><div class="v">${num(s7.cumulative_hypothetical_short_r,2)}R <span class="dim">over ${num(s7.short_signals_blocked,0)} signals</span></div>`
+    + `<div class="k">Bearish execution research?</div><div class="v">${esc(lr.bearish_execution_research_warranted||"TOO EARLY")}</div>`
+    + '</div>';
+  const bm = lr.best_missed_opportunity, wa = lr.worst_trade_correctly_avoided;
+  if(bm) html += `<div class="dim" style="margin-top:8px;font-size:11.5px"><b>Best missed:</b> ${esc(bm.symbol)} ${esc(bm.direction||"")} (${esc(bm.reason||"")}) → ${bm.hypothetical_r!=null?num(bm.hypothetical_r,2)+"R":"n/a"}, MFE ${pct(bm.mfe_pct)}, target hit ${bm.modelled_target_hit}</div>`;
+  if(wa) html += `<div class="dim" style="font-size:11.5px"><b>Correctly avoided:</b> ${esc(wa.symbol)} ${esc(wa.direction||"")} (${esc(wa.reason||"")}) → ${wa.hypothetical_r!=null?num(wa.hypothetical_r,2)+"R":"n/a"}, MAE ${pct(wa.mae_pct)}, stop hit ${wa.modelled_stop_hit}</div>`;
+  b.innerHTML += html;
+  const lessons = lr.top_lessons || [];
+  if(lessons.length){
+    const ll = el("div", null, "");
+    ll.innerHTML = '<div class="lbl" style="margin-top:10px">Top lessons</div>'
+      + lessons.map(x=>`<div class="note" style="margin:6px 0">${esc(x)}</div>`).join("");
+    b.appendChild(ll);
+  }
   sec.appendChild(b);
   return sec;
 }
