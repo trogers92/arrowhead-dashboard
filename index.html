@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Arrowhead Trading Engine</title>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#111722; --panel2:#0d1420; --line:#1e2836;
+    --txt:#d7e0ec; --muted:#7d8ba0; --dim:#57647a;
+    --green:#26d07c; --red:#ff5c6c; --amber:#f5b452; --blue:#57a6ff;
+    --badge-live:#0f3d29; --badge-live-t:#3ff09a;
+    --badge-degraded:#4a3a12; --badge-degraded-t:#f5b452;
+    --badge-offline:#3a3f4a; --badge-offline-t:#9aa7bb;
+    --badge-kill:#4a1620; --badge-kill-t:#ff7a86;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+    font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,"Roboto Mono",monospace;
+    -webkit-font-smoothing:antialiased}
+  a{color:var(--blue)}
+  .wrap{max-width:720px;margin:0 auto;padding:14px 12px 60px}
+  header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+  header.top h1{font-size:15px;margin:0;letter-spacing:.5px;font-weight:600;flex:1}
+  .badge{padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.6px;white-space:nowrap}
+  .badge.LIVE{background:var(--badge-live);color:var(--badge-live-t)}
+  .badge.DEGRADED{background:var(--badge-degraded);color:var(--badge-degraded-t)}
+  .badge.OFFLINE{background:var(--badge-offline);color:var(--badge-offline-t)}
+  .badge.KILL{background:var(--badge-kill);color:var(--badge-kill-t)}
+  .sub{width:100%;color:var(--muted);font-size:11.5px;margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:2px 14px}
+  .sub b{color:var(--txt);font-weight:600}
+  section.card{margin-top:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);overflow:hidden}
+  .card > h2{margin:0;padding:11px 13px;font-size:12px;letter-spacing:1px;color:var(--muted);
+    text-transform:uppercase;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .card > h2 .pill{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:700;letter-spacing:.4px}
+  .pill.on{background:var(--badge-live);color:var(--badge-live-t)}
+  .pill.off{background:var(--badge-offline);color:var(--badge-offline-t)}
+  .pill.scan{background:#123048;color:#7fc4ff}
+  .body{padding:12px 13px}
+  .kv{display:grid;grid-template-columns:1fr auto;gap:7px 12px}
+  .kv .k{color:var(--muted)}
+  .kv .v{text-align:right;font-variant-numeric:tabular-nums}
+  .big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .big .cell{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px}
+  .big .lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+  .big .num{font-size:22px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .num.pos{color:var(--green)} .num.neg{color:var(--red)}
+  .barwrap{height:8px;background:#0b1220;border-radius:6px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
+  .bar{height:100%;background:linear-gradient(90deg,#1f7a4d,#26d07c)}
+  .bar.warn{background:linear-gradient(90deg,#7a5a1f,#f5b452)}
+  .bar.hot{background:linear-gradient(90deg,#7a1f2a,#ff5c6c)}
+  .note{background:#0e1a2a;border:1px solid #1b3350;color:#9cc7ff;border-radius:9px;padding:9px 11px;font-size:12px;margin:10px 0}
+  .warnbox{background:#2a2010;border:1px solid #55420f;color:var(--amber);border-radius:9px;padding:10px 12px;
+    font-weight:700;letter-spacing:.4px;margin:8px 0;font-size:12.5px;text-align:center}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:right;padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--dim);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px}
+  td:first-child,th:first-child{text-align:left}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .feed{display:flex;flex-direction:column;gap:0}
+  .feed .row{display:grid;grid-template-columns:56px 1fr;gap:9px;padding:7px 0;border-bottom:1px solid var(--line);align-items:start}
+  .feed .row:last-child{border-bottom:0}
+  .feed .t{color:var(--dim);font-size:10.5px;padding-top:1px}
+  .feed .msg{font-size:12px}
+  .feed .eng{font-size:9.5px;font-weight:700;letter-spacing:.5px;padding:1px 5px;border-radius:5px;background:#182234;color:#89a;margin-right:6px}
+  .feed .eng.equity{background:#12233a;color:#7fb0ff}
+  .feed .eng.crypto{background:#2a2412;color:#f0c674}
+  .feed .eng.options{background:#241a33;color:#c9a0ff}
+  .feed .eng.account{background:#241318;color:#ff9aa5}
+  details{border-top:1px solid var(--line)}
+  details > summary{padding:10px 13px;cursor:pointer;color:var(--muted);font-size:11.5px;
+    letter-spacing:.5px;list-style:none;user-select:none}
+  details > summary::-webkit-details-marker{display:none}
+  details > summary::before{content:"▸ ";color:var(--dim)}
+  details[open] > summary::before{content:"▾ "}
+  details .body{border-top:1px solid var(--line);background:var(--panel2)}
+  .muted{color:var(--muted)} .dim{color:var(--dim)}
+  .tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:5px;background:#182234;color:#9aa7bb;margin:2px 3px 0 0}
+  .tag.rej{background:#241318;color:#ff9aa5}
+  .empty{color:var(--dim);padding:8px 0;font-size:12px}
+  #gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  #gate .box{max-width:340px;width:100%;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:22px}
+  #gate h3{margin:0 0 4px;font-size:14px}
+  #gate p{color:var(--muted);font-size:12px;margin:0 0 14px}
+  #gate input{width:100%;padding:11px;border-radius:9px;border:1px solid var(--line);background:#0b1220;color:var(--txt);font:inherit}
+  #gate button{width:100%;margin-top:10px;padding:11px;border-radius:9px;border:0;background:#1f7a4d;color:#eafff3;font:inherit;font-weight:700;cursor:pointer}
+  #gate .err{color:var(--red);font-size:12px;margin-top:8px;min-height:16px}
+  .footer{margin-top:18px;color:var(--dim);font-size:10.5px;text-align:center}
+  .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--dim);border-top-color:var(--green);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-1px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="gate" hidden>
+  <div class="box">
+    <h3>Arrowhead Trading Engine</h3>
+    <p>Private dashboard. Enter your passphrase to decrypt the live snapshot. It is stored only in this browser and never sent anywhere.</p>
+    <input id="pass" type="password" inputmode="text" autocomplete="current-password" placeholder="passphrase" />
+    <button id="unlock">Unlock</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <h1 id="hTitle">Arrowhead Trading Engine</h1>
+    <span class="badge" id="hBadge">…</span>
+    <div class="sub" id="hSub"></div>
+  </header>
+  <div id="cards"></div>
+  <div class="footer" id="foot"></div>
+</div>
+
+<script>
+"use strict";
+const ITERS = 210000, MAGIC = "ARRO1";
+const LS_KEY = "arrowhead_dash_pass";
+const REFRESH_MS = 45000;
+
+const $ = s => document.querySelector(s);
+const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
+const b64ToBytes = b => Uint8Array.from(atob(b.trim()), c => c.charCodeAt(0));
+
+function money(n){ if(n==null||isNaN(n)) return "—"; const s=(n<0?"-":"")+"$"+Math.abs(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); return s; }
+function pct(n){ if(n==null||isNaN(n)) return "—"; return (n>=0?"+":"")+n.toFixed(2)+"%"; }
+function num(n,d=4){ if(n==null||isNaN(n)) return "—"; return Number(n).toLocaleString(undefined,{maximumFractionDigits:d}); }
+function pnlClass(n){ return n==null?"":(n>=0?"pos":"neg"); }
+function ago(iso){ if(!iso) return "—"; const s=(Date.now()-Date.parse(iso))/1000; if(s<0) return "in "+fmtDur(-s); return fmtDur(s)+" ago"; }
+function fmtDur(s){ s=Math.round(s); if(s<60) return s+"s"; if(s<3600) return Math.round(s/60)+"m"; if(s<86400) return (s/3600).toFixed(1)+"h"; return (s/86400).toFixed(1)+"d"; }
+function clockUTC(iso){ if(!iso) return "—"; const d=new Date(iso); return d.toISOString().slice(11,16)+"Z "+d.toISOString().slice(5,10); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+async function deriveKey(pass, salt){
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name:"PBKDF2", salt, iterations:ITERS, hash:"SHA-256" },
+    base, { name:"AES-GCM", length:256 }, false, ["decrypt"]);
+}
+async function decryptSnapshot(blobB64, pass){
+  const raw = b64ToBytes(blobB64);
+  const magic = new TextDecoder().decode(raw.slice(0,5));
+  if (magic !== MAGIC) throw new Error("bad-format");
+  const salt = raw.slice(5,21), iv = raw.slice(21,33), data = raw.slice(33);
+  const key = await deriveKey(pass, salt);
+  const plain = await crypto.subtle.decrypt({ name:"AES-GCM", iv }, key, data);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+let PASS = null, timer = null;
+
+async function load(){
+  try{
+    const res = await fetch("snapshot.enc?ts=" + Date.now(), { cache:"no-store" });
+    if(!res.ok) throw new Error("fetch "+res.status);
+    const blob = await res.text();
+    const snap = await decryptSnapshot(blob, PASS);
+    render(snap);
+    $("#foot").innerHTML = 'snapshot ' + esc(ago(snap.generated_at)) + ' · auto-refresh ' + (REFRESH_MS/1000) + 's · <span class="spin"></span>';
+  }catch(e){
+    if(String(e.message).includes("bad-format") || e.name === "OperationError"){
+      localStorage.removeItem(LS_KEY); location.reload(); return;
+    }
+    $("#foot").innerHTML = '<span class="neg">snapshot load error: '+esc(e.message)+'</span> · retrying…';
+  }
+}
+
+function render(s){
+  $("#app").hidden = false; $("#gate").hidden = true;
+  const h = s.header || {};
+  $("#hTitle").textContent = h.title || "Arrowhead Trading Engine";
+  const badge = (h.badge || "OFFLINE");
+  const be = $("#hBadge"); be.textContent = badge; be.className = "badge " + (badge === "KILL SWITCH" ? "KILL" : badge);
+  $("#hSub").innerHTML =
+    `<div>last cycle: <b>${esc(ago(h.last_successful_cycle))}</b></div>`+
+    `<div>next equity: <b>${esc(clockUTC(h.next_equity_cycle))}</b></div>`+
+    `<div>account: <b>${h.account_connected?"connected":"—"}</b></div>`+
+    `<div>robinhood: <b>${h.robinhood_connected?"connected":"—"}</b></div>`;
+
+  const c = $("#cards"); c.innerHTML = "";
+  c.appendChild(accountCard(s.account || {}));
+  c.appendChild(positionsCard(s.positions || []));
+  c.appendChild(equityCard(s.equity || {}));
+  c.appendChild(activityCard(s.activity || []));
+  c.appendChild(cryptoCard(s.crypto || {}));
+  c.appendChild(optionsCard(s.options || {}));
+  c.appendChild(healthCard(s.health || {}, h));
+}
+
+function card(title, pill){
+  const sec = el("section","card");
+  const hh = el("h2", null, esc(title));
+  if(pill){ const p = el("span","pill "+pill.cls, esc(pill.text)); hh.appendChild(p); }
+  sec.appendChild(hh);
+  return sec;
+}
+function bodyDiv(){ return el("div","body"); }
+
+function accountCard(a){
+  const sec = card("Account");
+  const b = bodyDiv();
+  const dep = a.deployed_pct || 0;
+  const barCls = dep >= 80 ? "hot" : dep >= 60 ? "warn" : "";
+  b.innerHTML = `
+    <div class="big">
+      <div class="cell"><div class="lbl">Live equity</div><div class="num">${money(a.total_equity)}</div></div>
+      <div class="cell"><div class="lbl">Daily P&amp;L</div><div class="num ${pnlClass(a.daily_pnl)}">${money(a.daily_pnl)} <span style="font-size:13px">${pct(a.daily_loss_pct!=null?-a.daily_loss_pct:null)}</span></div></div>
+    </div>
+    <div class="kv">
+      <div class="k">Available cash / buying power</div><div class="v">${money(a.buying_power)}</div>
+      <div class="k">Total deployed</div><div class="v">${money(a.deployed_notional)} · ${num(a.deployed_pct,1)}%</div>
+      <div class="k">Remaining deployable</div><div class="v">${money(a.remaining_deployment_usd)}</div>
+      <div class="k">Max deployment (${num(a.max_deployed_pct,0)}%)</div><div class="v">${money(a.max_deployed_usd)}</div>
+      <div class="k">Max risk / trade</div><div class="v">${money(a.max_risk_per_trade_usd)} · ${num(a.max_risk_per_trade_pct,0)}% of equity</div>
+      <div class="k">Start-of-day equity</div><div class="v">${money(a.start_of_day_equity)}</div>
+      <div class="k">Daily loss limit (${num(a.daily_max_loss_pct,0)}%)</div><div class="v">${money(a.start_of_day_equity!=null?-(a.start_of_day_equity*a.daily_max_loss_pct/100):null)}</div>
+      <div class="k">Kill switch</div><div class="v">${a.kill_switch?'<span class="neg">TRIGGERED</span>':'<span class="pos">clear</span>'}</div>
+    </div>
+    <div class="barwrap"><div class="bar ${barCls}" style="width:${Math.min(100,dep).toFixed(1)}%"></div></div>
+    <div class="dim" style="margin-top:6px;font-size:10.5px">${esc(a.max_risk_per_trade_rule||"")}</div>`;
+  sec.appendChild(b);
+  return sec;
+}
+
+function positionsCard(rows){
+  const sec = card("Live positions");
+  const b = bodyDiv();
+  if(!rows.length){ b.innerHTML = '<div class="empty">No open positions</div>'; sec.appendChild(b); return sec; }
+  let html = '<div class="scroll"><table><thead><tr><th>Sym</th><th>Eng</th><th>Dir</th><th>Qty</th><th>Entry</th><th>Mark</th><th>Value</th><th>uP&amp;L</th><th>%</th><th>Stop</th><th>Target</th><th>Opened</th></tr></thead><tbody>';
+  for(const p of rows){
+    html += `<tr>
+      <td>${esc(p.symbol)}</td><td class="dim">${esc(p.engine)}</td><td>${esc(p.direction)}</td>
+      <td>${num(p.quantity,6)}</td><td>${num(p.entry,4)}</td><td>${num(p.mark,4)}</td><td>${money(p.value)}</td>
+      <td class="${pnlClass(p.unrealized_pnl)}">${money(p.unrealized_pnl)}</td>
+      <td class="${pnlClass(p.unrealized_pnl_pct)}">${pct(p.unrealized_pnl_pct)}</td>
+      <td>${num(p.stop,4)}</td><td>${num(p.target,4)}</td><td class="dim">${esc(ago(p.opened_at))}</td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  b.innerHTML = html;
+  sec.appendChild(b);
+  return sec;
+}
+
+function equityCard(e){
+  const on = e.enabled;
+  const sec = card("Equity engine", { cls: on?"on":"off", text: on?"LIVE":"OFF" });
+  const b = bodyDiv();
+  b.innerHTML = `
+    <div class="kv">
+      <div class="k">Status</div><div class="v">${on?'<span class="pos">LIVE — autonomous</span>':'<span class="dim">OFF</span>'}</div>
+      <div class="k">Strategy version</div><div class="v">${esc(e.strategy_version)}</div>
+      <div class="k">Market regime</div><div class="v">${esc(e.market_regime)}</div>
+      <div class="k">Allow long / short</div><div class="v">${e.long_engine_status==="active"?"YES":"no"} / ${e.short_engine_status==="active"?"YES":"no"}</div>
+      <div class="k">Last evaluated 15m bar</div><div class="v">${esc(clockUTC(e.last_evaluated_bar))}</div>
+      <div class="k">Last cycle</div><div class="v">${esc(ago(e.last_cycle))}</div>
+      <div class="k">Next scan</div><div class="v">${esc(clockUTC(e.next_scan))}</div>
+    </div>`;
+  const subs = (e.submitted_orders||[]);
+  if(!subs.length){
+    b.appendChild(el("div","note", "<b>NO TRADE</b> — " + esc(e.no_trade_reason || "no qualifying setup this cycle. This is normal, not an error.")));
+  }
+  sec.appendChild(b);
+  sec.appendChild(details("Candidates ("+ (e.candidates||[]).length +")", tagList(e.candidates, "symbol")));
+  sec.appendChild(details("Rejected signals ("+ (e.rejected_signals||[]).length +")", rejList(e.rejected_signals)));
+  sec.appendChild(details("Submitted orders ("+ subs.length +")", tradeMini(subs)));
+  sec.appendChild(details("Fills ("+ (e.fills||[]).length +")", tradeMini(e.fills)));
+  return sec;
+}
+
+function cryptoCard(cr){
+  const on = cr.enabled;
+  const sec = card("Crypto engine", on ? {cls:"on",text:"LIVE"} : {cls:"scan",text:"BUILT + SCANNING"});
+  const b = bodyDiv();
+  if(cr.trading_disabled_banner) b.appendChild(el("div","warnbox", esc(cr.trading_disabled_banner)));
+  const reg = cr.regimes || {};
+  b.innerHTML += `
+    <div class="kv">
+      <div class="k">PERMIT_CRYPTO</div><div class="v">${cr.permit_crypto?'<span class="amber">true</span>':'<span class="dim">false</span>'}</div>
+      <div class="k">Strategy version</div><div class="v">${esc(cr.strategy_version)}</div>
+      <div class="k">BTC regime</div><div class="v">${esc(reg["BTC-USD"]||"—")}</div>
+      <div class="k">ETH regime</div><div class="v">${esc(reg["ETH-USD"]||"—")}</div>
+      <div class="k">BTC-uptrend filter</div><div class="v">${cr.btc_uptrend==null?"—":(cr.btc_uptrend?"YES":"no")}</div>
+      <div class="k">Warming up</div><div class="v">${esc((cr.warming_up||[]).join(", ")||"none")}</div>
+      <div class="k">Crypto P&amp;L (unreal/real)</div><div class="v">${money((cr.pnl||{}).unrealized)} / ${money((cr.pnl||{}).realized)}</div>
+      <div class="k">Last scan</div><div class="v">${esc(ago(cr.last_scan))}</div>
+      <div class="k">Next scan</div><div class="v">${esc(clockUTC(cr.next_scan))}</div>
+    </div>`;
+  sec.appendChild(b);
+  sec.appendChild(details("Candidates ("+(cr.candidates||[]).length+")", tagList(cr.candidates,"symbol")));
+  sec.appendChild(details("Rejection reasons ("+(cr.rejections||[]).length+")", rejList(cr.rejections)));
+  sec.appendChild(details("Open crypto positions ("+(cr.positions||[]).length+")", posMini(cr.positions)));
+  if((cr.not_ready_reasons||[]).length) sec.appendChild(details("Why trading is disabled", tagList((cr.not_ready_reasons||[]).map(x=>({symbol:x})),"symbol")));
+  return sec;
+}
+
+function optionsCard(op){
+  const on = op.enabled;
+  const sec = card("Options engine", on ? {cls:"on",text:"LIVE"} : {cls:"scan",text:"BUILT + SCANNING"});
+  const b = bodyDiv();
+  if(op.trading_disabled_banner) b.appendChild(el("div","warnbox", esc(op.trading_disabled_banner)));
+  b.innerHTML += `
+    <div class="kv">
+      <div class="k">PERMIT_OPTIONS</div><div class="v">${op.permit_options?'<span class="amber">true</span>':'<span class="dim">false</span>'}</div>
+      <div class="k">Strategy version</div><div class="v">${esc(op.strategy_version)}</div>
+      <div class="k">Risk budget / trade</div><div class="v">${money(op.risk_budget_usd)}</div>
+      <div class="k">Cheapest valid contract</div><div class="v">${money(op.cheapest_valid_contract_cost)}</div>
+      <div class="k">Eligible</div><div class="v">${op.eligible?'<span class="pos">yes</span>':'<span class="dim">no</span>'}</div>
+      <div class="k">Watched underlyings</div><div class="v">${esc((op.underlyings_watched||[]).join(", "))}</div>
+      <div class="k">Options P&amp;L (unreal/real)</div><div class="v">${money((op.pnl||{}).unrealized)} / ${money((op.pnl||{}).realized)}</div>
+      <div class="k">Last scan</div><div class="v">${esc(ago(op.last_scan))}</div>
+      <div class="k">Next scan</div><div class="v">${esc(clockUTC(op.next_scan))}</div>
+    </div>`;
+  sec.appendChild(b);
+  sec.appendChild(details("Directional setups", kvBlock(op.setups)));
+  sec.appendChild(details("Candidate contracts ("+(op.candidate_contracts||[]).length+")", contractList(op.candidate_contracts)));
+  sec.appendChild(details("Rejected contracts ("+(op.rejected_contracts||[]).length+")", rejContractList(op.rejected_contracts)));
+  sec.appendChild(details("Open options positions ("+(op.positions||[]).length+")", posMini(op.positions)));
+  return sec;
+}
+
+function activityCard(items){
+  const sec = card("Activity");
+  const b = bodyDiv();
+  if(!items.length){ b.innerHTML = '<div class="empty">No recent activity</div>'; sec.appendChild(b); return sec; }
+  const f = el("div","feed");
+  for(const it of items.slice(0,40)){
+    const row = el("div","row");
+    row.innerHTML = `<div class="t">${esc(clockUTC(it.ts))}</div>`+
+      `<div class="msg"><span class="eng ${esc(it.engine)}">${esc((it.engine||"").toUpperCase())}</span>${esc(it.text)}</div>`;
+    f.appendChild(row);
+  }
+  b.appendChild(f);
+  sec.appendChild(b);
+  return sec;
+}
+
+function healthCard(hlth, h){
+  const sec = card("Cloud health");
+  const b = bodyDiv();
+  const w = hlth.workers || {};
+  const names = { equity:"Equity worker", crypto:"Crypto worker", options:"Options worker" };
+  let html = "";
+  if(!hlth.available && !Object.keys(w).length){
+    html += '<div class="dim" style="font-size:12px">Live workflow status is fetched during cloud runs; showing last snapshot values.</div>';
+  }
+  html += '<div class="kv">';
+  for(const k of ["equity","crypto","options"]){
+    const x = w[k] || {};
+    const ok = x.last_conclusion === "success";
+    const cc = x.last_conclusion ? (ok?'<span class="pos">success</span>':'<span class="neg">'+esc(x.last_conclusion)+'</span>') : '<span class="dim">—</span>';
+    html += `<div class="k">${names[k]}</div><div class="v">${cc}${x.duration_s?` · ${x.duration_s}s`:""}</div>`;
+    html += `<div class="k dim">&nbsp;&nbsp;last / next run</div><div class="v dim">${esc(ago(x.last_run))} / ${esc(clockUTC(x.next_scheduled))}</div>`;
+    if(x.last_error) html += `<div class="k neg">&nbsp;&nbsp;last error</div><div class="v neg">${esc(x.last_error)}</div>`;
+  }
+  html += `<div class="k">Desktop required</div><div class="v"><span class="pos">NO</span></div>`;
+  html += '</div>';
+  b.innerHTML = html;
+  sec.appendChild(b);
+  return sec;
+}
+
+function details(title, node){
+  const d = el("details"); d.appendChild(el("summary",null,esc(title)));
+  const bd = el("div","body");
+  if(typeof node === "string") bd.innerHTML = node; else bd.appendChild(node);
+  d.appendChild(bd);
+  return d;
+}
+function tagList(arr, key){
+  if(!arr || !arr.length) return '<div class="empty">none</div>';
+  return arr.map(x => `<span class="tag">${esc(typeof x==="object"? (x[key]||JSON.stringify(x)) : x)}</span>`).join("");
+}
+function rejList(arr){
+  if(!arr || !arr.length) return '<div class="empty">none</div>';
+  return arr.slice(0,40).map(r => {
+    const sym = r.symbol || "";
+    const reason = r.reason || (Array.isArray(r.reasons)? r.reasons.join(", ") : "");
+    return `<div style="padding:5px 0;border-bottom:1px solid var(--line)"><span class="tag rej">${esc(sym)}</span> <span class="muted">${esc(reason)}</span></div>`;
+  }).join("");
+}
+function kvBlock(obj){
+  if(!obj || !Object.keys(obj).length) return '<div class="empty">none</div>';
+  return '<div class="kv">'+Object.entries(obj).map(([k,v])=>`<div class="k">${esc(k)}</div><div class="v">${esc(v)}</div>`).join("")+'</div>';
+}
+function contractList(arr){
+  if(!arr || !arr.length) return '<div class="empty">none — no contract fits the risk budget</div>';
+  return '<div class="scroll"><table><thead><tr><th>Under</th><th>Type</th><th>Strike</th><th>Cost</th><th>Fits?</th></tr></thead><tbody>'+
+    arr.slice(0,30).map(c=>`<tr><td>${esc(c.underlying)}</td><td>${esc(c.type)}</td><td>${num(c.strike,2)}</td><td>${money(c.cost)}</td><td>${c.within_budget?'<span class="pos">yes</span>':'<span class="neg">no</span>'}</td></tr>`).join("")+
+    '</tbody></table></div>';
+}
+function rejContractList(arr){
+  if(!arr || !arr.length) return '<div class="empty">none</div>';
+  return arr.slice(0,40).map(r=>`<div style="padding:5px 0;border-bottom:1px solid var(--line)"><span class="tag rej">${esc(r.underlying)} ${esc(r.type||"")} ${num(r.strike,0)}</span> <span class="muted">${esc((r.reasons||[]).join(", "))}</span></div>`).join("");
+}
+function tradeMini(arr){
+  if(!arr || !arr.length) return '<div class="empty">none</div>';
+  return '<div class="scroll"><table><thead><tr><th>Time</th><th>Sym</th><th>Dir</th><th>Qty</th><th>Px</th></tr></thead><tbody>'+
+    arr.slice(0,20).map(t=>`<tr><td class="dim">${esc(clockUTC(t.ts))}</td><td>${esc(t.symbol)}</td><td>${esc(t.direction||t.side||"")}</td><td>${num(t.quantity ?? t.fill_quantity,6)}</td><td>${num(t.entry_price ?? t.fill_price,4)}</td></tr>`).join("")+
+    '</tbody></table></div>';
+}
+function posMini(arr){
+  if(!arr || !arr.length) return '<div class="empty">none</div>';
+  return '<div class="scroll"><table><thead><tr><th>Sym</th><th>Qty</th><th>Entry</th><th>Mark</th><th>uP&amp;L</th></tr></thead><tbody>'+
+    arr.map(p=>`<tr><td>${esc(p.symbol)}</td><td>${num(p.quantity,6)}</td><td>${num(p.entry,4)}</td><td>${num(p.mark,4)}</td><td class="${pnlClass(p.unrealized_pnl)}">${money(p.unrealized_pnl)}</td></tr>`).join("")+
+    '</tbody></table></div>';
+}
+
+// ---- gate / boot ----
+function showGate(msg){
+  $("#gate").hidden = false; $("#app").hidden = true;
+  if(msg) $("#gateErr").textContent = msg;
+  setTimeout(()=>$("#pass").focus(), 50);
+}
+async function tryUnlock(pass){
+  $("#gateErr").textContent = "";
+  try{
+    const res = await fetch("snapshot.enc?ts="+Date.now(), { cache:"no-store" });
+    if(!res.ok) throw new Error("cannot fetch snapshot ("+res.status+")");
+    const snap = await decryptSnapshot(await res.text(), pass);
+    PASS = pass;
+    try{ localStorage.setItem(LS_KEY, pass); }catch(_){}
+    render(snap);
+    $("#foot").innerHTML = 'snapshot ' + esc(ago(snap.generated_at)) + ' · auto-refresh ' + (REFRESH_MS/1000) + 's <span class="spin"></span>';
+    if(timer) clearInterval(timer);
+    timer = setInterval(load, REFRESH_MS);
+  }catch(e){
+    showGate(e.name === "OperationError" ? "Wrong passphrase." : ("Error: " + e.message));
+  }
+}
+$("#unlock").addEventListener("click", ()=> tryUnlock($("#pass").value));
+$("#pass").addEventListener("keydown", e=>{ if(e.key==="Enter") tryUnlock($("#pass").value); });
+
+(function boot(){
+  let saved = null;
+  try{ saved = localStorage.getItem(LS_KEY); }catch(_){}
+  if(saved) tryUnlock(saved); else showGate();
+})();
+</script>
+</body>
+</html>
