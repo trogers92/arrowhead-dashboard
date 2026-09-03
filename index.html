@@ -375,20 +375,23 @@ function learningCard(lr){
   }
   const t = lr.today || {}, s7 = lr.seven_day || {};
   let html = '<div class="big">'
-    + `<div class="cell"><div class="lbl">Evaluated today</div><div class="num">${num(t.evaluated_opportunities,0)}</div></div>`
+    + `<div class="cell"><div class="lbl">Evaluated candidates today</div><div class="num">${num(t.evaluated_candidates,0)}</div><div class="dim" style="font-size:10px">long ${num(t.evaluated_candidates_long,0)} · short ${num(t.evaluated_candidates_short,0)}</div></div>`
     + `<div class="cell"><div class="lbl">Hypothetical R left on table</div><div class="num ${pnlClass(t.hypothetical_r_left_on_table)}">${num(t.hypothetical_r_left_on_table,2)}R</div></div>`
     + '</div>';
   html += '<div class="kv">'
-    + `<div class="k">Actual trades</div><div class="v">${num(t.actual_trades,0)}</div>`
-    + `<div class="k">Rejected / blocked</div><div class="v">${num(t.rejected_or_blocked,0)}</div>`
+    + `<div class="k">Qualified signals</div><div class="v">${num(t.qualified_signals,0)} <span class="dim">reached the policy</span></div>`
+    + `<div class="k">Pre-signal rejections</div><div class="v">${num(t.pre_signal_rejections,0)} <span class="dim">stopped by an entry filter</span></div>`
+    + `<div class="k">Blocked qualified signals</div><div class="v">${num(t.blocked_qualified_signals,0)} <span class="dim">stopped by execution/risk</span></div>`
+    + `<div class="k">Trades taken</div><div class="v">${num(t.actual_trades,0)}</div>`
     + `<div class="k">Good rejections</div><div class="v"><span class="pos">${num(t.good_rejections,0)}</span></div>`
     + `<div class="k">Bad rejections</div><div class="v"><span class="neg">${num(t.bad_rejections,0)}</span></div>`
-    + `<div class="k">Missed SHORT opportunities</div><div class="v"><span class="neg">${num(t.missed_short_opportunities,0)}</span> <span class="dim">(shorting disabled)</span></div>`
+    + `<div class="k">Bearish candidates that later moved a short's way</div><div class="v"><span class="neg">${num(t.missed_short_opportunities,0)}</span> <span class="dim">(not executable — no equity shorting)</span></div>`
     + `<div class="k">Losses avoided by filters</div><div class="v">${num(t.losses_avoided_hypothetical_r,2)}R <span class="dim">hypothetical</span></div>`
     + `<div class="k">Outcomes still pending</div><div class="v dim">${num(t.pending_outcomes,0)}</div>`
-    + `<div class="k">7-day bearish (blocked) R</div><div class="v">${num(s7.cumulative_hypothetical_short_r,2)}R <span class="dim">over ${num(s7.short_signals_blocked,0)} signals</span></div>`
+    + `<div class="k">7-day non-executable bearish R</div><div class="v">${num(s7.cumulative_hypothetical_short_r,2)}R <span class="dim">over ${num(s7.short_signals_blocked,0)} candidates</span></div>`
     + `<div class="k">Bearish execution research?</div><div class="v">${esc(lr.bearish_execution_research_warranted||"TOO EARLY")}</div>`
     + '</div>';
+  if(lr.execution_policy_note) html += `<div class="dim" style="margin-top:8px;font-size:10.5px">${esc(lr.execution_policy_note)}</div>`;
   const bm = lr.best_missed_opportunity, wa = lr.worst_trade_correctly_avoided;
   if(bm) html += `<div class="dim" style="margin-top:8px;font-size:11.5px"><b>Best missed:</b> ${esc(bm.symbol)} ${esc(bm.direction||"")} (${esc(bm.reason||"")}) → ${bm.hypothetical_r!=null?num(bm.hypothetical_r,2)+"R":"n/a"}, MFE ${pct(bm.mfe_pct)}, target hit ${bm.modelled_target_hit}</div>`;
   if(wa) html += `<div class="dim" style="font-size:11.5px"><b>Correctly avoided:</b> ${esc(wa.symbol)} ${esc(wa.direction||"")} (${esc(wa.reason||"")}) → ${wa.hypothetical_r!=null?num(wa.hypothetical_r,2)+"R":"n/a"}, MAE ${pct(wa.mae_pct)}, stop hit ${wa.modelled_stop_hit}</div>`;
